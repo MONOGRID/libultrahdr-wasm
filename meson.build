@@ -4,7 +4,7 @@ project(
   version: '1.0.0',
   meson_version: '>=0.63.0',
   default_options: [
-    'warning_level=3', 
+    'warning_level=3',
     'cpp_std=c++20'
     ],
 )
@@ -49,7 +49,7 @@ libultrahdr_dep = declare_dependency(
   link_with: libultrahdr_lib,
 )
 
-link_args = [  
+link_args = [
   '-sALLOW_MEMORY_GROWTH',
   '--bind',
   '--embind-emit-tsd=libultrahdr.d.ts'
@@ -61,7 +61,7 @@ executable(
   'libultrahdr',
   'libultrahdr-wasm.cpp',
   dependencies: [deps, libultrahdr_dep],
-  include_directories: lib_ultra_hdr_inc, 
+  include_directories: lib_ultra_hdr_inc,
   link_args: link_args
 )
 
@@ -71,7 +71,7 @@ executable(
   'libultrahdr-esm',
   'libultrahdr-wasm.cpp',
   dependencies: [deps, libultrahdr_dep],
-  include_directories: lib_ultra_hdr_inc, 
+  include_directories: lib_ultra_hdr_inc,
   link_args: [
     link_args,
     '-sMODULARIZE',
@@ -86,14 +86,18 @@ executable(
   'libultrahdr-debug',
   'libultrahdr-wasm.cpp',
   dependencies: [deps, libultrahdr_dep],
-  include_directories: lib_ultra_hdr_inc, 
+  include_directories: lib_ultra_hdr_inc,
   link_args: [
     link_args,
     '-gsource-map',
     '-sLOAD_SOURCE_MAP',
-    '-sNO_DISABLE_EXCEPTION_CATCHING',   
+    '-sNO_DISABLE_EXCEPTION_CATCHING',
     '-sMODULARIZE',
     '-sUSE_ES6_IMPORT_META',
-    '-sEXPORT_ES6'     
+    '-sEXPORT_ES6'
   ]
 )
+
+# npm pack doesn't work otherwise
+fs = import('fs')
+fs.copyfile('.npmignore', '.npmignore')
