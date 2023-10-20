@@ -1,0 +1,129 @@
+<html>
+
+</body>
+<script type="module" lang="js">
+    import libultrahdr from './build/libultrahdr-debug.js'
+
+
+    const getimage = (file) => {
+        return new Promise((resolve, reject) => {
+            const img = document.createElement('img')
+            img.onload = () => {
+                resolve(img)
+            }
+
+            var fr = new FileReader();
+            fr.onload = () => {
+                img.src = fr.result;
+            }
+
+            fr.readAsDataURL(file);
+        })
+    }
+
+    const downloadURL = (data, fileName) => {
+        var a;
+        a = document.createElement('a');
+        a.href = data;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.style = 'display: none';
+        a.click();
+        a.remove();
+    };
+
+    const downloadBlob = (data, fileName, mimeType) => {
+        var blob, url;
+        blob = new Blob([data], {
+            type: mimeType
+        });
+        url = window.URL.createObjectURL(blob);
+        downloadURL(url, fileName);
+        setTimeout(function () {
+            return window.URL.revokeObjectURL(url);
+        }, 1000);
+    };
+
+
+    const start = async () => {
+        const libraryInstance = await libultrahdr()
+
+        let width
+        let height
+        let sdr
+        let gainmap
+        let metadata
+
+        const appendGainmap = () => {
+            if (sdr && gainmap && width && height && metadata) {
+                const res = libraryInstance.appendGainMap(
+                    width, height,
+                    sdr, sdr.length,
+                    gainmap, gainmap.length,
+                    Array.isArray(metadata.gainMapMax) ? metadata.gainMapMax.reduce((prev, curr) => prev + curr, 0) / metadata.gainMapMax.length : metadata.gainMapMax, 
+                    Array.isArray(metadata.gainMapMin) ? metadata.gainMapMin.reduce((prev, curr) => prev + curr, 0) / metadata.gainMapMin.length : metadata.gainMapMin,
+                    metadata.mapGamma, metadata.offsetSdr, metadata.offsetHdr,
+                    Array.isArray(metadata.hdrCapacityMin) ? metadata.hdrCapacityMin.reduce((prev, curr) => prev + curr, 0) / metadata.hdrCapacityMin.length : metadata.hdrCapacityMin, 
+                    Array.isArray(metadata.hdrCapacityMax) ? metadata.hdrCapacityMax.reduce((prev, curr) => prev + curr, 0) / metadata.hdrCapacityMax.length : metadata.hdrCapacityMax
+                )
+                downloadBlob(res, 'image.jpg', 'image/jpeg')
+            }
+        }
+
+        document.getElementById('sdr').onchange = async (e) => {
+            const file = e.currentTarget.files[0]
+            const img = await getimage(file)
+            width = img.width
+            height = img.height
+
+            const arrBuffer = await file.arrayBuffer();
+            const byteArray = new Uint8Array(arrBuffer);
+            sdr = byteArray
+            appendGainmap()
+        }
+        document.getElementById('gainmap').onchange = async (e) => {
+            const file = e.currentTarget.files[0]
+            const arrBuffer = await file.arrayBuffer();
+            const byteArray = new Uint8Array(arrBuffer);
+            gainmap = byteArray
+            appendGainmap()
+        }
+        document.getElementById('metadata').onchange = async (e) => {
+            const file = e.currentTarget.files[0]
+            const fr = new FileReader();
+            fr.onload = (e) => {
+                metadata = JSON.parse(e.target.result);
+                appendGainmap()
+            }
+            fr.readAsText(file);
+        }
+
+        // document.getElementById('encode-gainmap').onclick = async (e) => {
+        //     console.log('encode gainmap')
+        // }
+    }
+    start()
+
+</script>
+<h1>libultrahdr wasm testbed</h1>
+<div>
+    SDR
+    <input type="file" id="sdr" accept="image/jpeg" />
+    GAINMAP
+    <input type="file" id="gainmap" accept="image/jpeg" />
+    METADATA
+    <input type="file" id="metadata" accept="application/json" />
+</div>
+<br />
+<!-- 
+TODO: test 
+<div>
+    HDR
+    <input type="file" id="hdr" />
+    <button id="encode-gainmap">ENCODE GAINMAP</button>
+</div> 
+-->
+
+<body>
+
+</html>

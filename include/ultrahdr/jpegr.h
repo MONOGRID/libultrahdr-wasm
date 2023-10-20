@@ -308,7 +308,7 @@ public:
      */
     status_t getJPEGRInfo(jr_compressed_ptr jpegr_image_ptr, jr_info_ptr jpeg_image_info_ptr);
 
-protected:
+
     /*
      * This method is called in the encoding pipeline. It will take the uncompressed 8-bit and
      * 10-bit yuv images as input, and calculate the uncompressed gain map. The input images
@@ -351,7 +351,7 @@ protected:
                           ultrahdr_output_format output_format, float max_display_boost,
                           jr_uncompressed_ptr dest);
 
-private:
+
     /*
      * This method is called in the encoding pipeline. It will encode the gain map.
      *
