@@ -335,7 +335,7 @@ auto appendGainMap(int width, int height,
   printf("\n");
 
   jr_compressed_ptr handle = outJpeg.getImageHandle();
-  return val(typed_memory_view(handle->maxLength, (uint8_t *)handle->data));
+  return val(typed_memory_view(handle->length, (uint8_t *)handle->data));
 }
 
 int main()
