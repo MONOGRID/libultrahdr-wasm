@@ -118,6 +118,16 @@ bool JpegDecoderHelper::decompressImage(const void* image, int length, bool deco
     return decode(image, length, decodeToRGBA);
 }
 
+bool JpegDecoderHelper::decompressMetadata(const void* image, int length) {
+    if (image == nullptr || length <= 0) {
+        ALOGE("Image size can not be handled: %d", length);
+        return false;
+    }
+    mResultBuffer.clear();
+    mXMPBuffer.clear();
+    return decodeMetadata(image, length);
+}
+
 void* JpegDecoderHelper::getDecompressedImagePtr() {
     return mResultBuffer.data();
 }
@@ -210,6 +220,86 @@ bool JpegDecoderHelper::extractEXIF(const void* image, int length) {
     jpeg_destroy_decompress(&cinfo);
     return true;
 }
+
+bool JpegDecoderHelper::decodeMetadata(const void* image, int length) {
+    bool status = true;
+    jpeg_decompress_struct cinfo;
+    jpegrerror_mgr myerr;
+    cinfo.err = jpeg_std_error(&myerr.pub);
+    myerr.pub.error_exit = jpegrerror_exit;
+    myerr.pub.output_message = output_message;
+
+    if (setjmp(myerr.setjmp_buffer)) {
+        jpeg_destroy_decompress(&cinfo);
+        return false;
+    }
+
+    jpeg_create_decompress(&cinfo);
+
+    jpeg_save_markers(&cinfo, kAPP0Marker, 0xFFFF);
+    jpeg_save_markers(&cinfo, kAPP1Marker, 0xFFFF);
+    jpeg_save_markers(&cinfo, kAPP2Marker, 0xFFFF);
+
+    jpegr_source_mgr mgr(static_cast<const uint8_t*>(image), length);
+    cinfo.src = &mgr;
+    if (jpeg_read_header(&cinfo, TRUE) != JPEG_HEADER_OK) {
+        jpeg_destroy_decompress(&cinfo);
+        return false;
+    }
+
+    // Save XMP data, EXIF data, and ICC data.
+    // Here we only handle the first XMP / EXIF / ICC package.
+    // We assume that all packages are starting with two bytes marker (eg FF E1 for EXIF package),
+    // two bytes of package length which is stored in marker->original_length, and the real data
+    // which is stored in marker->data.
+    bool exifAppears = false;
+    bool xmpAppears = false;
+    bool iccAppears = false;
+    size_t pos = 2;  // position after SOI
+    for (jpeg_marker_struct* marker = cinfo.marker_list;
+         marker && !(exifAppears && xmpAppears && iccAppears);
+         marker = marker->next) {
+         pos += 4;
+         pos += marker->original_length;
+        if (marker->marker != kAPP1Marker && marker->marker != kAPP2Marker) {
+            continue;
+        }
+        const unsigned int len = marker->data_length;
+        if (!xmpAppears &&
+            len > sizeof(kXmpNameSpace) &&
+            !memcmp(marker->data, kXmpNameSpace, sizeof(kXmpNameSpace))) {
+            mXMPBuffer.resize(len+1, 0);
+            memcpy(static_cast<void*>(mXMPBuffer.data()), marker->data, len);
+            xmpAppears = true;
+        } else if (!exifAppears &&
+                   len > sizeof(kExifIdCode) &&
+                   !memcmp(marker->data, kExifIdCode, sizeof(kExifIdCode))) {
+            mEXIFBuffer.resize(len, 0);
+            memcpy(static_cast<void*>(mEXIFBuffer.data()), marker->data, len);
+            exifAppears = true;
+            mExifPos = pos - marker->original_length;
+        } else if (!iccAppears &&
+                   len > sizeof(kICCSig) &&
+                   !memcmp(marker->data, kICCSig, sizeof(kICCSig))) {
+            mICCBuffer.resize(len, 0);
+            memcpy(static_cast<void*>(mICCBuffer.data()), marker->data, len);
+            iccAppears = true;
+        }
+    }
+
+    mWidth = cinfo.image_width;
+    mHeight = cinfo.image_height;
+    if (mWidth > kMaxWidth || mHeight > kMaxHeight) {
+        status = false;
+        goto CleanUp;
+    }
+
+
+CleanUp:
+    jpeg_destroy_decompress(&cinfo);
+    return status;
+}
+
 
 bool JpegDecoderHelper::decode(const void* image, int length, bool decodeToRGBA) {
     bool status = true;

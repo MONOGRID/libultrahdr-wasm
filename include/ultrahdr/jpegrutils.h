@@ -67,6 +67,8 @@ public:
 status_t Write(jr_compressed_ptr destination, const void* source, size_t length, int &position);
 
 
+std::string getRawMetadataFromXMP(uint8_t* xmp_data, size_t xmp_size);
+
 /*
  * Parses XMP packet and fills metadata with data from XMP
  *

@@ -366,7 +366,7 @@ jpegr_info_struct getJPEGRInfo(std::string jpeg, int jpegSize)
 
 struct ultrahdr_unpacked
 {
-  ultrahdr_metadata_struct metadata;
+  std::string metadata;
   val sdr;
   val gainMap;
   bool success;
@@ -405,38 +405,34 @@ auto extractJpegR(std::string jpeg, int jpegSize)
   }
 
   JpegDecoderHelper jpeg_dec_obj_gm;
-  ultrahdr_metadata_struct uhdr_metadata;
 
-  if (!jpeg_dec_obj_gm.decompressImage(gainmap_jpeg_image.data, gainmap_jpeg_image.length))
+  if (!jpeg_dec_obj_gm.decompressMetadata(gainmap_jpeg_image.data, gainmap_jpeg_image.length))
   {
     unpacked.success = false;
-    unpacked.errorMessage = val("JPEGR Decode Error");
+    unpacked.errorMessage = val("Decode Metadata Error");
     return unpacked;
   }
 
-  if ((jpeg_dec_obj_gm.getDecompressedImageWidth() * jpeg_dec_obj_gm.getDecompressedImageHeight()) >
-      jpeg_dec_obj_gm.getDecompressedImageSize())
-  {
-    unpacked.success = false;
-    unpacked.errorMessage = val("JPEGR Calculation Error");
-    return unpacked;
-  }
+  auto str = getRawMetadataFromXMP(
+      static_cast<uint8_t *>(jpeg_dec_obj_gm.getXMPPtr()),
+      jpeg_dec_obj_gm.getXMPSize());
 
-  if (!getMetadataFromXMP(static_cast<uint8_t *>(jpeg_dec_obj_gm.getXMPPtr()),
-                          jpeg_dec_obj_gm.getXMPSize(), &uhdr_metadata))
-  {
-    unpacked.success = false;
-    unpacked.errorMessage = val("Cannot Extract Metadata");
-    return unpacked;
-  }
+  // ultrahdr_metadata_struct uhdr_metadata;
+  // if (!getMetadataFromXMP(static_cast<uint8_t *>(jpeg_dec_obj_gm.getXMPPtr()),
+  //                         jpeg_dec_obj_gm.getXMPSize(), &uhdr_metadata))
+  // {
+  //   unpacked.success = false;
+  //   unpacked.errorMessage = val("Cannot Extract Metadata");
+  //   return unpacked;
+  // }
 
-  uhdr_metadata.hdrCapacityMax = log2(uhdr_metadata.hdrCapacityMax);
-  uhdr_metadata.hdrCapacityMin = log2(uhdr_metadata.hdrCapacityMin);
-  uhdr_metadata.maxContentBoost = log2(uhdr_metadata.maxContentBoost);
-  uhdr_metadata.minContentBoost = log2(uhdr_metadata.minContentBoost);
+  // uhdr_metadata.hdrCapacityMax = log2(uhdr_metadata.hdrCapacityMax);
+  // uhdr_metadata.hdrCapacityMin = log2(uhdr_metadata.hdrCapacityMin);
+  // uhdr_metadata.maxContentBoost = log2(uhdr_metadata.maxContentBoost);
+  // uhdr_metadata.minContentBoost = log2(uhdr_metadata.minContentBoost);
 
   unpacked.success = true;
-  unpacked.metadata = uhdr_metadata;
+  unpacked.metadata = str;
   unpacked.sdr = val(typed_memory_view(primary_jpeg_image.length, static_cast<uint8_t *>(primary_jpeg_image.data)));
   unpacked.gainMap = val(typed_memory_view(gainmap_jpeg_image.length, static_cast<uint8_t *>(gainmap_jpeg_image.data)));
   return unpacked;

@@ -55,6 +55,8 @@ public:
      * Returns false if decompressing the image fails.
      */
     bool decompressImage(const void* image, int length, bool decodeToRGBA = false);
+
+    bool decompressMetadata(const void* image, int length);
     /*
      * Returns the decompressed raw image buffer pointer. This method must be called only after
      * calling decompressImage().
@@ -122,6 +124,7 @@ public:
                                       std::vector<uint8_t>* exifData);
 
 private:
+    bool decodeMetadata(const void* image, int length);
     bool decode(const void* image, int length, bool decodeToRGBA);
     // Returns false if errors occur.
     bool decompress(jpeg_decompress_struct* cinfo, const uint8_t* dest, bool isSingleChannel);

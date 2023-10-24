@@ -451,6 +451,35 @@ const string XMPXmlHandler::hdrCapacityMinAttrName = kMapHDRCapacityMin;
 const string XMPXmlHandler::hdrCapacityMaxAttrName = kMapHDRCapacityMax;
 const string XMPXmlHandler::baseRenditionIsHdrAttrName = kMapBaseRenditionIsHDR;
 
+string getRawMetadataFromXMP(uint8_t* xmp_data, size_t xmp_size) {
+    string nameSpace = "http://ns.adobe.com/xap/1.0/\0";
+
+    if (xmp_size < nameSpace.size()+2) {
+        // Data too short
+        return string();
+    }
+
+    if (strncmp(reinterpret_cast<char*>(xmp_data), nameSpace.c_str(), nameSpace.size())) {
+        // Not correct namespace
+        return string();
+    }
+
+    // Position the pointers to the start of XMP XML portion
+    xmp_data += nameSpace.size()+1;
+    xmp_size -= nameSpace.size()+1;
+    XMPXmlHandler handler;
+
+    // We need to remove tail data until the closing tag. Otherwise parser will throw an error.
+    while(xmp_data[xmp_size-1]!='>' && xmp_size > 1) {
+        xmp_size--;
+    }
+
+    string str(reinterpret_cast<const char*>(xmp_data), xmp_size);
+
+    return str;
+}
+
+
 bool getMetadataFromXMP(uint8_t* xmp_data, size_t xmp_size, ultrahdr_metadata_struct* metadata) {
     string nameSpace = "http://ns.adobe.com/xap/1.0/\0";
 
@@ -475,6 +504,7 @@ bool getMetadataFromXMP(uint8_t* xmp_data, size_t xmp_size, ultrahdr_metadata_st
     }
 
     string str(reinterpret_cast<const char*>(xmp_data), xmp_size);
+
     MessageHandler msg_handler;
     unique_ptr<XmlRule> rule(new XmlElementRule);
     XmlReader reader(&handler, &msg_handler);
