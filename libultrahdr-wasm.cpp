@@ -4,6 +4,7 @@
 // #include "ultrahdr/ultrahdrcommon.h"
 // #include "ultrahdr/gainmapmath.h"
 #include "ultrahdr/jpegr.h"
+#include "ultrahdr/jpegrutils.h"
 
 using namespace emscripten;
 using namespace ultrahdr;
@@ -270,6 +271,7 @@ jr_compressed_ptr UhdrCompressedStructWrapper::getImageHandle()
 {
   return &mImg;
 }
+
 /*
  * appendGainMap
 
@@ -291,6 +293,7 @@ auto appendGainMap(int width, int height,
       .length = sdrSize,
       .maxLength = sdrSize,
       .colorGamut = ULTRAHDR_COLORGAMUT_UNSPECIFIED};
+
   jpegr_compressed_struct jpgGainmap = {
       .data = (void *)gainmapPtr,
       .length = gainmapSize,
@@ -312,7 +315,7 @@ auto appendGainMap(int width, int height,
 
   JpegR jpeg = JpegR();
 
-  status_t status = jpeg.appendGainMap(
+  jpeg.appendGainMap(
       &jpgSdr,                 // jpeg
       &jpgGainmap,             // gainmap
       nullptr,                 // exif
@@ -330,9 +333,9 @@ auto appendGainMap(int width, int height,
   //     nullptr                                      // exif
   // );
 
-  printf("STATUS\n");
-  std::cout << status;
-  printf("\n");
+  // printf("STATUS\n");
+  // std::cout << status;
+  // printf("\n");
 
   jr_compressed_ptr handle = outJpeg.getImageHandle();
   return val(typed_memory_view(handle->length, (uint8_t *)handle->data));
@@ -343,6 +346,102 @@ int main()
   // printf("HELLO WORLD\n");
 }
 
+jpegr_info_struct getJPEGRInfo(std::string jpeg, int jpegSize)
+{
+  const uint8_t *jpegPtr = reinterpret_cast<const uint8_t *>(jpeg.c_str());
+
+  jpegr_compressed_struct jpegrPtr{
+      .data = (void *)jpegPtr,
+      .length = jpegSize,
+      .maxLength = jpegSize,
+      .colorGamut = ULTRAHDR_COLORGAMUT_UNSPECIFIED};
+
+  jpegr_info_struct info{};
+  // auto size = info.exifData->size();
+
+  JpegR().getJPEGRInfo(&jpegrPtr, &info);
+
+  return info;
+}
+
+struct ultrahdr_unpacked
+{
+  ultrahdr_metadata_struct metadata;
+  val sdr;
+  val gainMap;
+  bool success;
+  val errorMessage;
+};
+
+auto extractJpegR(std::string jpeg, int jpegSize)
+{
+  const uint8_t *jpegPtr = reinterpret_cast<const uint8_t *>(jpeg.c_str());
+
+  jpegr_compressed_struct jpegr_image_ptr{
+      .data = (void *)jpegPtr,
+      .length = jpegSize,
+      .maxLength = jpegSize,
+      .colorGamut = ULTRAHDR_COLORGAMUT_UNSPECIFIED};
+
+  jpegr_compressed_struct primary_jpeg_image, gainmap_jpeg_image;
+
+  ultrahdr_unpacked unpacked;
+
+  auto jpegr = JpegR();
+
+  auto status = jpegr.extractPrimaryImageAndGainMap(&jpegr_image_ptr, &primary_jpeg_image, &gainmap_jpeg_image);
+  if (status != NO_ERROR)
+  {
+    if (status == ERROR_JPEGR_GAIN_MAP_IMAGE_NOT_FOUND)
+    {
+      unpacked.success = false;
+      unpacked.errorMessage = val("Gainmap Image not found");
+      return unpacked;
+    }
+
+    unpacked.success = false;
+    unpacked.errorMessage = val("Error Extracting gainmap, status: " + std::to_string(status));
+    return unpacked;
+  }
+
+  JpegDecoderHelper jpeg_dec_obj_gm;
+  ultrahdr_metadata_struct uhdr_metadata;
+
+  if (!jpeg_dec_obj_gm.decompressImage(gainmap_jpeg_image.data, gainmap_jpeg_image.length))
+  {
+    unpacked.success = false;
+    unpacked.errorMessage = val("JPEGR Decode Error");
+    return unpacked;
+  }
+
+  if ((jpeg_dec_obj_gm.getDecompressedImageWidth() * jpeg_dec_obj_gm.getDecompressedImageHeight()) >
+      jpeg_dec_obj_gm.getDecompressedImageSize())
+  {
+    unpacked.success = false;
+    unpacked.errorMessage = val("JPEGR Calculation Error");
+    return unpacked;
+  }
+
+  if (!getMetadataFromXMP(static_cast<uint8_t *>(jpeg_dec_obj_gm.getXMPPtr()),
+                          jpeg_dec_obj_gm.getXMPSize(), &uhdr_metadata))
+  {
+    unpacked.success = false;
+    unpacked.errorMessage = val("Cannot Extract Metadata");
+    return unpacked;
+  }
+
+  uhdr_metadata.hdrCapacityMax = log2(uhdr_metadata.hdrCapacityMax);
+  uhdr_metadata.hdrCapacityMin = log2(uhdr_metadata.hdrCapacityMin);
+  uhdr_metadata.maxContentBoost = log2(uhdr_metadata.maxContentBoost);
+  uhdr_metadata.minContentBoost = log2(uhdr_metadata.minContentBoost);
+
+  unpacked.success = true;
+  unpacked.metadata = uhdr_metadata;
+  unpacked.sdr = val(typed_memory_view(primary_jpeg_image.length, static_cast<uint8_t *>(primary_jpeg_image.data)));
+  unpacked.gainMap = val(typed_memory_view(gainmap_jpeg_image.length, static_cast<uint8_t *>(gainmap_jpeg_image.data)));
+  return unpacked;
+}
+
 std::string getExceptionMessage(intptr_t exceptionPtr)
 {
   return std::string(reinterpret_cast<std::exception *>(exceptionPtr)->what());
@@ -350,6 +449,32 @@ std::string getExceptionMessage(intptr_t exceptionPtr)
 
 EMSCRIPTEN_BINDINGS(module)
 {
+
+  value_object<ultrahdr_metadata_struct>("UltraHDRMetadata")
+      .field("version", &ultrahdr_metadata_struct::version)
+      .field("gamma", &ultrahdr_metadata_struct::gamma)
+      .field("hdrCapacityMax", &ultrahdr_metadata_struct::hdrCapacityMax)
+      .field("hdrCapacityMin", &ultrahdr_metadata_struct::hdrCapacityMin)
+      .field("maxContentBoost", &ultrahdr_metadata_struct::maxContentBoost)
+      .field("minContentBoost", &ultrahdr_metadata_struct::minContentBoost)
+      .field("offsetHdr", &ultrahdr_metadata_struct::offsetHdr)
+      .field("offsetSdr", &ultrahdr_metadata_struct::offsetSdr);
+
+  value_object<ultrahdr_unpacked>("UltraHDRUnpacked")
+      .field("metadata", &ultrahdr_unpacked::metadata)
+      .field("success", &ultrahdr_unpacked::success)
+      .field("errorMessage", &ultrahdr_unpacked::errorMessage)
+      .field("sdr", &ultrahdr_unpacked::sdr)
+      .field("gainMap", &ultrahdr_unpacked::gainMap);
+
+  value_object<jpegr_info_struct>("JPEGRInfo")
+      .field("width", &jpegr_info_struct::width)
+      .field("height", &jpegr_info_struct::height)
+      // .field("iccData", &jpegr_info_struct::iccData) // TODO: include this
+      // .field("exifData", &jpegr_info_struct::exifData) // TODO: include this
+      ;
   function("getExceptionMessage", &getExceptionMessage);
   function("appendGainMap", &appendGainMap);
+  function("getJPEGRInfo", &getJPEGRInfo);
+  function("extractJpegR", &extractJpegR);
 }
