@@ -21,19 +21,19 @@ deps = [
 subdir('third_party/image_io')
 
 sources = files(
-  'gainmapmath.cpp',
-  'icc.cpp',
-  'jpegr.cpp',
-  'jpegrutils.cpp',
-  'jpegencoderhelper.cpp',
-  'jpegdecoderhelper.cpp',
-  'multipictureformat.cpp'
+  'lib/gainmapmath.cpp',
+  'lib/icc.cpp',
+  'lib/jpegr.cpp',
+  'lib/jpegrutils.cpp',
+  'lib/jpegencoderhelper.cpp',
+  'lib/jpegdecoderhelper.cpp',
+  'lib/multipictureformat.cpp'
 )
 
 sources += image_io_lib
 
 lib_ultra_hdr_inc = include_directories(
-  'include'
+  'lib'
 )
 
 libultrahdr_lib = static_library(

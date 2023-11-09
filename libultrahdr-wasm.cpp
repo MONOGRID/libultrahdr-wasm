@@ -3,8 +3,8 @@
 // #include <fstream>
 // #include "ultrahdr/ultrahdrcommon.h"
 // #include "ultrahdr/gainmapmath.h"
-#include "ultrahdr/jpegr.h"
-#include "ultrahdr/jpegrutils.h"
+#include "jpegr.h"
+#include "jpegrutils.h"
 
 using namespace emscripten;
 using namespace ultrahdr;
@@ -390,7 +390,7 @@ auto extractJpegR(std::string jpeg, int jpegSize)
   auto jpegr = JpegR();
 
   auto status = jpegr.extractPrimaryImageAndGainMap(&jpegr_image_ptr, &primary_jpeg_image, &gainmap_jpeg_image);
-  if (status != NO_ERROR)
+  if (status != JPEGR_NO_ERROR)
   {
     if (status == ERROR_JPEGR_GAIN_MAP_IMAGE_NOT_FOUND)
     {

@@ -71,11 +71,13 @@
           gainmap, gainmap.length,
           Array.isArray(metadata.gainMapMax) ? metadata.gainMapMax.reduce((prev, curr) => prev + curr, 0) / metadata.gainMapMax.length : metadata.gainMapMax,
           Array.isArray(metadata.gainMapMin) ? metadata.gainMapMin.reduce((prev, curr) => prev + curr, 0) / metadata.gainMapMin.length : metadata.gainMapMin,
-          metadata.mapGamma, metadata.offsetSdr, metadata.offsetHdr,
-          Array.isArray(metadata.hdrCapacityMin) ? metadata.hdrCapacityMin.reduce((prev, curr) => prev + curr, 0) / metadata.hdrCapacityMin.length : metadata.hdrCapacityMin,
-          Array.isArray(metadata.hdrCapacityMax) ? metadata.hdrCapacityMax.reduce((prev, curr) => prev + curr, 0) / metadata.hdrCapacityMax.length : metadata.hdrCapacityMax
+          Array.isArray(metadata.gamma) ? metadata.gamma.reduce((prev, curr) => prev + curr, 0) / metadata.gamma.length : metadata.gamma,
+          Array.isArray(metadata.offsetSdr) ? metadata.offsetSdr.reduce((prev, curr) => prev + curr, 0) / metadata.offsetSdr.length : metadata.offsetSdr,
+          Array.isArray(metadata.offsetSdr) ? metadata.offsetSdr.reduce((prev, curr) => prev + curr, 0) / metadata.offsetSdr.length : metadata.offsetSdr,
+          metadata.hdrCapacityMin,
+          metadata.hdrCapacityMax
         )
-        downloadBlob(res, 'image.jpg', 'image/jpeg')
+        downloadBlob(res, 'packed-gainmap.jpg', 'image/jpeg')
       }
     }
 
@@ -113,6 +115,9 @@
 
       const res = libraryInstance.extractJpegR(buf, buf.length)
       console.log(res)
+
+      downloadBlob(res.sdr, 'unpacked-sdr.jpg', 'image/jpeg')
+      downloadBlob(res.gainMap, 'unpacked-gainmap.jpg', 'image/jpeg')
 
     }
   }
