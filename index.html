@@ -115,9 +115,12 @@
 
       const res = libraryInstance.extractJpegR(buf, buf.length)
       console.log(res)
-
-      downloadBlob(res.sdr, 'unpacked-sdr.jpg', 'image/jpeg')
-      downloadBlob(res.gainMap, 'unpacked-gainmap.jpg', 'image/jpeg')
+      if (res.success) {
+        downloadBlob(res.sdr, 'unpacked-sdr.jpg', 'image/jpeg')
+        downloadBlob(res.gainMap, 'unpacked-gainmap.jpg', 'image/jpeg')
+      } else {
+        console.error(res.errorMessage)
+      }
 
     }
   }
@@ -125,6 +128,7 @@
 
 </script>
 <h1>libultrahdr wasm testbed</h1>
+<h2>test encoding</h2>
 <div>
   SDR
   <input type="file" id="sdr" accept="image/jpeg" />
@@ -134,9 +138,10 @@
   <input type="file" id="metadata" accept="application/json" />
 </div>
 <br />
+<h2>test decoding</h2>
 <div>
-  HDR
-  <input type="file" id="packedGainmap" />
+  packed gainmap:
+  <input type="file" id="packedGainmap" accept="image/jpeg" />
   <button id="unpack-gainmap">UNPACK GAINMAP</button>
 </div>
 
