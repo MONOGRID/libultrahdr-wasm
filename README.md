@@ -2,7 +2,7 @@
 
 WASM version of the [libultrahdr](https://github.com/google/libultrahdr) library.
 
-This library is primarly intended to be used in conjuction with the [gainmap-js](https://github.com/MONOGRID/gainmap-js) library which is, in turn, focused on providing an alternative lightweight HDR format for WebGL 3D Engines like (three.js) 
+This library is primarily intended to be used in conjunction with the [gainmap-js](https://github.com/MONOGRID/gainmap-js) library which is, in turn, focused on providing an alternative lightweight HDR format for WebGL 3D Engines like (three.js) 
 
 This library is provided "as-is" and not tested nor optimized for general use.
 
@@ -22,7 +22,7 @@ const libraryInstance = await libultrahdr()
 // # height: height of the final image 
 // # sdr: Uint8Array containing the SDR rendition encoded in jpeg
 // # gainmap: Uint8Array containing the Gainmap encoded in jpeg
-// # metadata: an object cotaining the parameters of the gainmap
+// # metadata: an object containing the parameters of the gainmap
 
 const result = libraryInstance.appendGainMap(
     width, height,
