@@ -254,7 +254,7 @@ UhdrCompressedStructWrapper::UhdrCompressedStructWrapper(size_t width, size_t he
 
 bool UhdrCompressedStructWrapper::allocateMemory()
 {
-  if (mWidth == 0 || (mWidth % 2 != 0) || mHeight == 0 || (mHeight % 2 != 0))
+  if (mWidth == 0 || mHeight == 0)
   {
     std::cerr << "Object in bad state, mem alloc failed" << std::endl;
     return false;
